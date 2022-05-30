@@ -16,11 +16,12 @@ model:
   use_pos_decoder: False
   use_coverage: False
   use_aux_encoder: False
-  use_bert: True
+  use_transformer: True
   universal_postags: True
   multilingual: True
 
-  bert:
+  lm: 'bert'
+  transformer:
     pretrained_model_dir: *bert_model_dir
     hidden_size: 768
 
@@ -199,7 +200,7 @@ environment:
   serialization_dir: *serialization_dir
   file_friendly_logging: False
   gpu: True
-  cuda_device: 3
+  cuda_device: 0
 
 trainer:
   device:

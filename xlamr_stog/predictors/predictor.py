@@ -114,7 +114,7 @@ class Predictor(Registrable):
             predictor_name = DEFAULT_PREDICTORS[model_type]
 
         word_splitter = None
-        if config['model'].get('use_bert', False):
+        if config['model'].get('use_transformer', False):
             word_splitter=config['data'].get('word_splitter', None)
         dataset_reader = load_dataset_reader(
             config["data"]["data_type"], word_splitter=word_splitter)

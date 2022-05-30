@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 import logging
 import os
 import json
+from tqdm.auto import tqdm
 
 from overrides import overrides
 # NLTK is so performance orientated (ha ha) that they have lazy imports. Why? Who knows.
@@ -15,6 +16,8 @@ from xlamr_stog.data.instance import Instance
 from xlamr_stog.data.token_indexers import TokenIndexer, SingleIdTokenIndexer
 from xlamr_stog.data.tokenizers import Token
 from xlamr_stog.data.tokenizers.bert_tokenizer import AMRBertTokenizer
+from xlamr_stog.data.tokenizers.t5_tokenizer import AMRT5Tokenizer
+from xlamr_stog.data.tokenizers.xlmr_tokenizer import AMRXLMRobertaTokenizer
 
 from xlamr_stog.utils.checks import ConfigurationError
 from xlamr_stog.utils.string import START_SYMBOL, END_SYMBOL
@@ -43,13 +46,22 @@ class AbstractMeaningRepresentationDatasetReader(DatasetReader):
                  split="test",
                  lazy: bool = False,
                  skip_first_line: bool = True,
-                 evaluation: bool = False
+                 evaluation: bool = False,
+                 lm="bert"
                  ) -> None:
 
         super().__init__(lazy=lazy)
         self._token_indexers = token_indexers or {'tokens': SingleIdTokenIndexer()}
         if word_splitter is not None:
-            self._word_splitter = AMRBertTokenizer.from_pretrained(word_splitter, do_lower_case=False)
+            if lm == "bert":
+                self._word_splitter = AMRBertTokenizer.from_pretrained(word_splitter, do_lower_case=False)
+                self.lm_oov_id = 100
+            elif lm == "t5":
+                self._word_splitter = AMRT5Tokenizer.from_pretrained(word_splitter)
+                self.lm_oov_id = 2
+            elif lm == "roberta":
+                self._word_splitter = AMRXLMRobertaTokenizer.from_pretrained(word_splitter)
+                self.lm_oov_id = 3
         else:
             self._word_splitter = None
 
@@ -66,7 +78,7 @@ class AbstractMeaningRepresentationDatasetReader(DatasetReader):
         self.source_copy = source_copy
         self.multilingual = multilingual
         self.extra_check=extra_check
-
+        self.lm = lm
         # Vector based vocab mapping
         self.translation_mapping = translation_mapping
         self.split = split
@@ -80,16 +92,17 @@ class AbstractMeaningRepresentationDatasetReader(DatasetReader):
         else:
             self.tgt_src_replacements = tgt_src_replacements
 
-        self._number_bert_ids = 0
-        self._number_bert_oov_ids = 0
+        self._number_lm_ids = 0
+        self._number_lm_oov_ids = 0
         self._number_non_oov_pos_tags = 0
         self._number_pos_tags = 0
 
     def report_coverage(self):
-        if self._number_bert_ids != 0:
-            logger.info('BERT OOV  rate: {0:.4f} ({1}/{2})'.format(
-                self._number_bert_oov_ids / self._number_bert_ids,
-                self._number_bert_oov_ids, self._number_bert_ids
+        if self._number_lm_ids != 0:
+            logger.info('{3} OOV  rate: {0:.4f} ({1}/{2})'.format(
+                self._number_lm_oov_ids / self._number_lm_ids,
+                self._number_lm_oov_ids, self._number_lm_ids,
+                self.lm.upper(),
             ))
         if self._number_non_oov_pos_tags != 0:
             logger.info('POS tag coverage: {0:.4f} ({1}/{2})'.format(
@@ -131,6 +144,7 @@ class AbstractMeaningRepresentationDatasetReader(DatasetReader):
                     if self.split != "test":
                         continue
                     else:
+                        print(self.lm)
                         raise e
         self.report_coverage()
 
@@ -162,8 +176,8 @@ class AbstractMeaningRepresentationDatasetReader(DatasetReader):
 
         if list_data['src_token_ids'] is not None:
             fields['src_token_ids'] = ArrayField(list_data['src_token_ids'])
-            self._number_bert_ids += len(list_data['src_token_ids'])
-            self._number_bert_oov_ids += len([bert_id for bert_id in list_data['src_token_ids'] if bert_id == 100])
+            self._number_lm_ids += len(list_data['src_token_ids'])
+            self._number_lm_oov_ids += len([lm_id for lm_id in list_data['src_token_ids'] if lm_id == self.lm_oov_id])
 
         if list_data['src_token_subword_index'] is not None:
             fields['src_token_subword_index'] = ArrayField(list_data['src_token_subword_index'])

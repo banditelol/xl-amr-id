@@ -10,15 +10,20 @@ curl -o data/bert-base-multilingual-cased/bert-base-multilingual-cased-vocab.txt
     https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt
 rm bert-base-multilingual-cased.tar.gz
 
-# python -u -m xlamr_stog/data/data_misc/numberbatch_emb.py
-# rm data/numberbatch/out_*
+echo "Downloading base mt5"
+mkdir -p data/mt5-base
+curl -o data/mt5-base/config.json -L https://huggingface.co/google/mt5-base/resolve/main/config.json
+curl -o data/mt5-base/pytorch_model.bin -L https://huggingface.co/google/mt5-base/resolve/main/pytorch_model.bin
+curl -o data/mt5-base/spiece.model -L https://huggingface.co/google/mt5-base/resolve/main/spiece.model
+
+echo "Downloading base xlm-r"
+mkdir -p data/xlm-roberta-base
+curl -o data/xlm-roberta-base/config.json -L https://huggingface.co/xlm-roberta-base/resolve/main/config.json
+curl -o data/xlm-roberta-base/pytorch_model.bin -L https://huggingface.co/xlm-roberta-base/resolve/main/pytorch_model.bin
+curl -o data/xlm-roberta-base/sentencepiece.bpe.model -L https://huggingface.co/xlm-roberta-base/resolve/main/sentencepiece.bpe.model
+curl -o data/xlm-roberta-base/tokenizer.json -L https://huggingface.co/xlm-roberta-base/resolve/main/tokenizer.json
+
 
 echo "Downloading tools."
 mkdir -p tools
 git clone https://github.com/ChunchuanLv/amr-evaluation-tool-enhanced.git tools/amr-evaluation-tool-enhanced
-
-# curl -O http://www.airpedia.org/tint/0.2/tint-runner-0.2-bin.tar.gz
-# tar -xzvf tint-runner-0.2-bin.tar.gz -C tools
-# rm tint-runner-0.2-bin.tar.gz
-
-

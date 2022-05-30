@@ -14,11 +14,12 @@ model:
   use_pos_decoder: False
   use_coverage: False
   use_aux_encoder: False
-  use_bert: True
+  use_transformer: True
   universal_postags: True
   multilingual: True
 
-  bert:
+  lm: 'bert'
+  transformer:
     pretrained_model_dir: data/bert-base-multilingual-cased
     hidden_size: 768
 

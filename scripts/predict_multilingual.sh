@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-cuda=2
+cuda=0
 lang=$1
 model_dir=$2
 

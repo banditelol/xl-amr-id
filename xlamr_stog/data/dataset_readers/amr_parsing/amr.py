@@ -436,7 +436,7 @@ class AMRGraph(penman.Graph):
                 return False
         return True
 
-    def get_list_data(self, amr, bos=None, eos=None, bert_tokenizer=None, laser_tokenizer=None, max_tgt_length=None, split="test", language = None, source_copy = True, multilingual=False, extra_check=False, translation_mapping=None, tgt_src_replacements=None):
+    def get_list_data(self, amr, bos=None, eos=None, lm_tokenizer=None, laser_tokenizer=None, max_tgt_length=None, split="test", language = None, source_copy = True, multilingual=False, extra_check=False, translation_mapping=None, tgt_src_replacements=None):
         node_list = self.get_list_node() #Linearinzing the graph nodes through dfs (node, relation, parent)
 
         tgt_tokens = []
@@ -608,9 +608,9 @@ class AMRGraph(penman.Graph):
             tgt_pos_tags, pos_tag_lut = add_source_side_tags_to_target_side(src_tokens, src_pos_tags, source_copy)
             src_must_copy_tags = [0 for _ in src_tokens]
 
-        if bert_tokenizer is not None:
-            src_token_ids, src_token_subword_index = bert_tokenizer.tokenize(src_tokens, True)
-
+        if lm_tokenizer is not None:
+            src_token_ids, src_token_subword_index = lm_tokenizer.tokenize(src_tokens, True)
+            
         if laser_tokenizer is not None:
             bpe_src_token_ids, bpe_src_token_subword_index = laser_tokenizer.tokenize(src_tokens, True)
 

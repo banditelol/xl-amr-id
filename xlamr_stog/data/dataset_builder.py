@@ -15,6 +15,7 @@ logger = logging.init_logger()
 
 
 def load_dataset_reader(dataset_type, universal_postags=False, generator_source_copy=True, multilingual=False, translation_mapping=None, tgt_src_replacements=None, split="test", *args, **kwargs):
+    print("USING DATASET: ",dataset_type, kwargs)
     if dataset_type == "AMR":
         dataset_reader = AbstractMeaningRepresentationDatasetReader(
             token_indexers=dict(
@@ -32,7 +33,8 @@ def load_dataset_reader(dataset_type, universal_postags=False, generator_source_
             extra_check=kwargs.get('extra_check', False),
             translation_mapping=translation_mapping,
             tgt_src_replacements=tgt_src_replacements,
-            split=split
+            split=split,
+            lm=kwargs.get('lm', None)
         )
 
     else:

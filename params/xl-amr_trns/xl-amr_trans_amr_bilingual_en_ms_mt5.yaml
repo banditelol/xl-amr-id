@@ -2,8 +2,9 @@
 
 # Device-sensitive parameters
 amr_data_dir: &amr_data_dir data/AMR/
-numberbatch: &numberbatch data/numberbatch/numberbatch-19.08.en_it_es_de_zh.txt
-
+numberbatch: &numberbatch data/numberbatch/numberbatch-19.08.en_ms.txt
+serialization_dir: &serialization_dir models/xl-amr_bilingual_en_ms_trans_amr_mt5
+train_batch_size: &train_batch_size 64
 
 # Model parameters
 model:
@@ -16,10 +17,9 @@ model:
   use_transformer: True
   universal_postags: True
   multilingual: True
-
-  lm: 'bert'
+  lm: &lm 't5'
   transformer:
-    pretrained_model_dir: data/bert-base-multilingual-cased
+    pretrained_model_dir: ./data/mt5-base
     hidden_size: 768
 
   encoder_token_embedding:
@@ -136,12 +136,12 @@ model:
   mimick_test:
 
     data:
-      - !!python/list [de, data/AMR/amr_2.0/test_de.txt.features.recat]
-    prediction: test.mult.de.pred.txt
+      - !!python/list [ms, data/AMR/amr_2.0/test_ms.txt.features.recat]
+    prediction: test.mult.ms.pred.txt
     batch_size: 32
     eval_script: scripts/eval_test.sh
     smatch_dir: tools/amr-evaluation-tool-enhanced
-    word_splitter: &word_splitter data/bert-base-multilingual-cased/bert-base-multilingual-cased-vocab.txt
+    word_splitter: &word_splitter data/mt5-base/spiece.model
     extra_check: &lang_check True
 
 
@@ -154,7 +154,7 @@ vocab:
       decoder_token_ids: 1
   max_vocab_size:
       encoder_token_ids: #18000
-      decoder_token_ids: #12200
+      decoder_token_ids: 12200
 
 
 # Data parameters
@@ -163,23 +163,17 @@ data:
   data_dir: *amr_data_dir
   train_data:
     - !!python/list [en, amr_2.0/train.txt.features.recat]
-    - !!python/list [en, europarl_en_de_es_it/train_en.txt.features.recat]
-    - !!python/list [de, europarl_en_de_es_it/train_de.txt.features.recat]
-#    - !!python/list [es, europarl_en_de_es_it/train_es.txt.features.recat]
-#    - !!python/list [it, europarl_en_de_es_it/train_it.txt.features.recat]
+    - !!python/list [ms, amr_2.0/train_ms.txt.features.recat]
   dev_data:
     - !!python/list [en, amr_2.0/dev.txt.features.recat]
-    - !!python/list [en, europarl_en_de_es_it/dev_en.txt.features.recat]
-    - !!python/list [de, europarl_en_de_es_it/dev_de.txt.features.recat]
-#    - !!python/list [es, europarl_en_de_es_it/dev_es.txt.features.recat]
-#    - !!python/list [it, europarl_en_de_es_it/dev_it.txt.features.recat]
+    - !!python/list [ms, amr_2.0/dev_ms.txt.features.recat]
   test_data:
     - !!python/list [en, amr_2.0/dev.txt.features.recat]
 
   data_type: AMR
   batch_first: True
   iterator:
-    train_batch_size: &train_batch_size 64
+    train_batch_size: *train_batch_size
     test_batch_size: 32
     iter_type: BucketIterator
     sorting_keys:  # (field, padding type)
@@ -187,6 +181,7 @@ data:
   pretrain_token_emb: *numberbatch
   pretrain_char_emb:
   word_splitter: *word_splitter
+  lm: *lm
   source_copy: *generator_source_copy
   mult_token_mapping: *generator_mult_token_mapping
   extra_check: *lang_check
@@ -198,7 +193,7 @@ environment:
   seed: 1
   numpy_seed: 1
   torch_seed: 1
-  serialization_dir: &serialization_dir models/xl-amr_bilingual_en_de_par_amr
+  serialization_dir: *serialization_dir
   file_friendly_logging: False
   gpu: True
   cuda_device: 0
