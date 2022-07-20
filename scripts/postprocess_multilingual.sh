@@ -9,7 +9,7 @@ lang=$1
 model_dir=$2
 test_data=${model_dir}/test_output/test_amr.${lang}.pred.txt
 
-spotlight_path=${util_dir}/spotlight/${lang}_test_spotlight_wiki.json
+spotlight_path=babelfy/ms_test_babelfy_wiki
 
 # ========== Set the above variables correctly ==========
 
@@ -23,9 +23,9 @@ printf "Wikification...`date`\n"
 python -u -m xlamr_stog.data.dataset_readers.amr_parsing.postprocess.wikification \
     --amr_files ${test_data}.frame \
     --util_dir ${util_dir}\
-    --spotlight_wiki $spotlight_path\
-    --lang ${lang}\
-    --exclude_spotlight
+    --spotlight_wiki ${spotlight_path}\
+    --lang ${lang}
+
 printf "Done.`date`\n\n"
 
 printf "Expanding nodes...`date`\n"

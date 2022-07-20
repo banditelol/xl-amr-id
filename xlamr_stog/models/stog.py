@@ -173,7 +173,7 @@ class STOG(Model):
         word_splitter = None
         if self.use_transformer:
             word_splitter = self.test_config.get('word_splitter', None)
-
+        lm = self.test_config.get('lm', None)
         extra_check = self.test_config.get('extra_check', False)
 
         dataset_reader = load_dataset_reader('AMR', word_splitter=word_splitter,
@@ -183,7 +183,7 @@ class STOG(Model):
                                              extra_check=extra_check,
                                              translation_mapping=self.translation_mapping,
                                              tgt_src_replacements=self.train_replacements,
-                                             split="test")
+                                             split="test", lm=lm)
         dataset_reader.set_evaluation()
         predictor = Predictor.by_name('STOG')(self, dataset_reader)
         manager = _PredictManager(

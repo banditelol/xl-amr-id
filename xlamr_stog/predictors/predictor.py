@@ -116,8 +116,9 @@ class Predictor(Registrable):
         word_splitter = None
         if config['model'].get('use_transformer', False):
             word_splitter=config['data'].get('word_splitter', None)
+            lm=config['data'].get('lm', None)
         dataset_reader = load_dataset_reader(
-            config["data"]["data_type"], word_splitter=word_splitter)
+            config["data"]["data_type"], word_splitter=word_splitter, lm=lm)
         if hasattr(dataset_reader, 'set_evaluation'):
             dataset_reader.set_evaluation()
 

@@ -1,3 +1,4 @@
+import time
 import os
 import re
 import json
@@ -27,6 +28,7 @@ def is_anonym_type(index: int, amr: AMR, text_map: Dict, types: List) -> bool:
     else:
         return False
 
+ANON_MAX_ITER=1024
 
 class TextAnonymizor:
 
@@ -41,7 +43,8 @@ class TextAnonymizor:
                  _R: List,
                  _INVP: List,
                  _INVS: List,
-                 exlude_ners: bool
+                 exlude_ners: bool,
+                 max_iter:int = 0
                  ) -> None:
         self._text_maps = text_maps
         self._priority_lists = priority_lists
@@ -54,6 +57,7 @@ class TextAnonymizor:
         self._R = _R
         self._INVP = _INVP
         self._INVS = _INVS
+        self.max_iter = max_iter
         self.NM_anonym={x.rstrip() for x in open("data/misc/NM_anonym.txt").readlines()}
         self.exlude_ners = exlude_ners
 
@@ -73,7 +77,10 @@ class TextAnonymizor:
         replaced_spans = {}
         collected_entities = set()
         ignored_spans = self._get_ignored_spans(amr)
+        max_iter=0
         while True:
+            max_iter+=1
+            if max_iter > ANON_MAX_ITER: raise Exception(f"Iteration exceed {ANON_MAX_ITER}, anonymization expect to need only 15-30 iteration")
             done = self._replace_span(
                 amr,
                 text_map,
@@ -86,6 +93,7 @@ class TextAnonymizor:
             )
             if done:
                 break
+        
         ner_counter = defaultdict(int)
         anonymization_map = {}
         for i, lemma in enumerate(amr.lemmas):
@@ -107,6 +115,7 @@ class TextAnonymizor:
                 amr.lemmas[i] = anonym_lemma
                 amr.tokens[i] = anonym_lemma
                 anonymization_map[anonym_lemma] = replaced_spans[lemma]
+        if max_iter > self.max_iter: self.max_iter=max_iter
         return anonymization_map
 
     def _leave_as_is(self,
@@ -190,8 +199,8 @@ class TextAnonymizor:
                     check_here=True
                 if span1 in ignored_spans or span2 in ignored_spans:
                     continue
-                if lang_stopwords:
-                    if span1 in lang_stopwords or span2 in lang_stopwords: continue
+                if self.lang_stopwords:
+                    if span1 in self.lang_stopwords or span2 in self.lang_stopwords: continue
 
                 if (span1 in text_map and type(text_map[span1])==dict) or (span2 in text_map and type(text_map[span2])==dict) or (amr.lang=="zh" and span1.replace(" ","") in text_map and type(text_map[span1.replace(" ","")])==dict) or (amr.lang=="zh" and span2.replace(" ","") in text_map and type(text_map[span2.replace(" ","")])==dict):
                     if amr.lang=="zh":
@@ -212,7 +221,7 @@ class TextAnonymizor:
                     return False
                 else:
 
-                    if lang2en_bn is not None and  lang2en_span is not None: #continue
+                    if self.lang2en_bn is not None and  self.lang2en_span is not None: #continue
                         if anonym_type != "named-entity": continue
                         ner_tags = amr.ner_tags[start:start + length]
                         # if len(set(ner_tags))==1 and ner_tags[0] in {"O","0"}: continue
@@ -223,14 +232,14 @@ class TextAnonymizor:
                             span1=span1.replace(" ","_")
                             span2=span2.replace(" ","_")
 
-                        if span1 in lang2en_span or span2 in lang2en_span or span1.title() in lang2en_span or span2.title() in lang2en_span:
-                            if span1 in lang2en_span: candidate_span = span1
-                            elif span2 in lang2en_span: candidate_span = span2
-                            elif span1.title() in lang2en_span: candidate_span = span1.title()
+                        if span1 in self.lang2en_span or span2 in self.lang2en_span or span1.title() in self.lang2en_span or span2.title() in self.lang2en_span:
+                            if span1 in self.lang2en_span: candidate_span = span1
+                            elif span2 in self.lang2en_span: candidate_span = span2
+                            elif span1.title() in self.lang2en_span: candidate_span = span1.title()
                             else: candidate_span = span2.title()
 
                             if candidate_span is not None:
-                                en_spans=lang2en_span[candidate_span]
+                                en_spans=self.lang2en_span[candidate_span]
                                 value=None
                                 for en_span in en_spans:
                                     en_span=en_span.title()
@@ -251,17 +260,17 @@ class TextAnonymizor:
                                 amr.replace_span(list(range(start, start + length)), [anonym_lemma], [pos_tag], [ner])
                                 return False
 
-                        elif span1 in lang2en_bn or span2 in lang2en_bn or span1.title() in lang2en_bn or span2.title() in lang2en_bn:
+                        elif span1 in self.lang2en_bn or span2 in self.lang2en_bn or span1.title() in self.lang2en_bn or span2.title() in self.lang2en_bn:
                             if anonym_type != "named-entity": continue
                             if span1 in string.punctuation or span2 in string.punctuation: continue
                             if len(set(ner_tags)) == 1 and ner_tags[0] in {"O", "0"}: continue
-                            if span1 in lang2en_bn: candidate_nm = span1
-                            elif span2 in lang2en_bn: candidate_nm = span2
-                            elif span1.title() in lang2en_bn: candidate_nm = span1.title()
+                            if span1 in self.lang2en_bn: candidate_nm = span1
+                            elif span2 in self.lang2en_bn: candidate_nm = span2
+                            elif span1.title() in self.lang2en_bn: candidate_nm = span1.title()
                             else: candidate_nm = span2.title()
 
                             if candidate_nm is not None:
-                                en_nm = lang2en_bn[candidate_nm]
+                                en_nm = self.lang2en_bn[candidate_nm]
                                 entity_name = en_nm.replace("_"," ")
                                 if entity_name in collected_entities:
                                     continue
@@ -411,20 +420,20 @@ if __name__ == "__main__":
     if args.lang=="en":
         text_anonymizor = TextAnonymizor.from_json(os.path.join(args.util_dir,
             "text_anonymization_rules.json"))
-        lang_stopwords=None
-        lang2en_span=None
-        lang2en_bn=None
+        text_anonymizor.lang_stopwords=None
+        text_anonymizor.lang2en_span=None
+        text_anonymizor.lang2en_bn=None
 
     else:
         text_anonymizor = TextAnonymizor.from_json(os.path.join(args.util_dir,"text_anonymization_en-{}.json".format(args.lang)))
-        lang_stopwords = set([x.rstrip() for x in open("data/cross-lingual-babelnet_mappings/stopwords_{}.txt".format(args.lang))])
+        text_anonymizor.lang_stopwords = set([x.rstrip() for x in open("data/cross-lingual-babelnet_mappings/stopwords_{}.txt".format(args.lang))])
 
-        lang2en_span=load_name_span_map("data/cross-lingual-babelnet_mappings/name_span_en_{}_map_amr_bn.json".format(args.lang), args.lang)
-        lang2en_bn=load_name_bn_wiki_map("data/cross-lingual-babelnet_mappings/namedEntity_wiki_synsets.{}.tsv".format(args.lang.upper()))
+        text_anonymizor.lang2en_span=load_name_span_map("data/cross-lingual-babelnet_mappings/name_span_en_{}_map_amr_bn.json".format(args.lang), args.lang)
+        text_anonymizor.lang2en_bn=load_name_bn_wiki_map("data/cross-lingual-babelnet_mappings/namedEntity_wiki_synsets.{}.tsv".format(args.lang.upper()))
 
     for amr_file in args.amr_file:
         with open(amr_file + ".recategorize{}".format("_noner" if args.exclude_ners else ""), "w", encoding="utf-8") as f:
             for amr in tqdm(AMRIO.read(amr_file, lang=args.lang)):
-
                 amr.abstract_map = text_anonymizor(amr)
                 f.write(str(amr) + "\n\n")
+    print(f"MAX ITER: {text_anonymizor.max_iter}")

@@ -22,6 +22,7 @@ class SenseRemover:
         self.amr_instance_count = 0
         self.restore_count = 0
         self.not_removed_instances = set()
+        self.modified_mfs = False
 
     def remove_file(self, file_path):
         for i, amr in enumerate(AMRIO.read(file_path), 1):
@@ -36,7 +37,7 @@ class SenseRemover:
             if node.copy_of is not None:
                 continue
             instance = node.instance
-            if args.modified_mfs and re.search(r'-\d\d$', instance):
+            if self.modified_mfs and re.search(r'-\d\d$', instance):
 
                 new_instance = self.node_utils.get_frames(instance)[0]
                 lemma = new_instance
@@ -140,6 +141,7 @@ if __name__ == '__main__':
     node_utils = NU.from_json(args.util_dir, 0)
 
     remover = SenseRemover(node_utils)
+    remover.modified_mfs= args.modified_mfs
 
     out_suffix ="nosense"
 

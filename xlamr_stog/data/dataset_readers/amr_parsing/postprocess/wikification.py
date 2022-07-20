@@ -1,3 +1,4 @@
+import string
 import os
 import json
 import requests
@@ -85,7 +86,7 @@ class Wikification:
         if text in self.wiki_span_cooccur_counter:
             return max(self.wiki_span_cooccur_counter[text].items(),
                        key=lambda x: (x[1], abs(len(text) - len(x[0]))))[0]
-        if exclude_spotlight: return '-'
+        elif exclude_spotlight: return '-'
         elif cached_wiki is not None:
             for wiki in cached_wiki.values():
                 if text == ' '.join(wiki.lower().split('_')):
@@ -196,6 +197,45 @@ class Wikification:
             # sleep(0.1)
         with open(os.path.join(self.util_dir, args.spotlight_wiki), 'w', encoding='utf-8') as f:
             json.dump(sent_map, f)
+    
+    def babelfy_wiki_api(self, sent):
+        lang_mapping = {
+            "ms":"ID",
+        }
+        mention_map = {}
+        base_url="https://babelfy.io/v1/disambiguate"
+        params = {
+            "text":sent,
+            "lang":lang_mapping.get(self.lang, "EN"),
+            "annType":"NAMED_ENTITIES",
+            "key":"b4bda3f1-56e7-4efe-a959-b1207efa8e07"
+        }
+        res = requests.get(base_url, params=params)
+        try:
+            for ent in res.json():
+                span_start = ent["charFragment"]["start"]
+                span_end = ent["charFragment"]["end"]+1
+                mention_map[sent[span_start:span_end]] = ent["DBpediaURL"].split("/")[-1]
+        except Exception as e:
+            print(f"problem in processing {sent}")
+            print(ent, res.json())
+            raise e
+        return mention_map
+
+    def dump_babelfy_wiki(self, file_path):
+        sent_map = {}
+        try:
+            for i, amr in tqdm(enumerate(AMRIO.read(file_path))):
+                # if i < 900 : continue
+                sent = amr.sentence
+                wiki = self.babelfy_wiki_api(sent)
+                sent_map[sent] = wiki
+            # sleep(0.1)
+        except Exception as e:
+            print(e)
+        finally:
+            with open(os.path.join(self.util_dir, args.babelfy_wiki), 'w', encoding='utf-8') as f:
+                json.dump(sent_map, f)
 
 
 if __name__ == '__main__':
@@ -207,6 +247,8 @@ if __name__ == '__main__':
     parser.add_argument('--lang', default="en")
     parser.add_argument('--exclude_spotlight', action='store_true',  help='Exclude spotlight and use wiki cocounter.')
     parser.add_argument('--dump_spotlight_wiki', action='store_true',  help='Use the Spotlight API to do wikification, and dump the results.')
+    parser.add_argument('--dump_babelfy_wiki', action='store_true',  help='Use the babelfy API to do wikification, and dump the results.')
+    parser.add_argument('--babelfy_wiki',  help='Speficy wikification file for the current dataset')
     parser.add_argument('--spotlight_wiki',  help='Speficy wikification file for the current dataset')
     parser.add_argument('--spotlight_port', default="2222", help='Specify the port of the server running DBPedia Spotlight API')
 
@@ -217,7 +259,9 @@ if __name__ == '__main__':
     if args.dump_spotlight_wiki:
         for file_path in args.amr_files:
             wikification.dump_spotlight_wiki(file_path)
-
+    elif args.dump_babelfy_wiki:
+        for file_path in args.amr_files:
+            wikification.dump_babelfy_wiki(file_path)
     else:
         wikification.load_utils(exclude_spotlight=args.exclude_spotlight)
         for file_path in args.amr_files:
